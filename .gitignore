@@ -1,0 +1,7 @@
+.*.sw?
+*~
+*.log
+.serverless
+node_modules
+npm-debug.log
+serverless.local.yml
