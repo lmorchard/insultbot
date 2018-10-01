@@ -9,6 +9,7 @@ module.exports.get = async (event, context) => {
     body: `<!DOCTYPE html>
       <html>
         <h1>Hello world!</h1>
+        <pre>${JSON.stringify(event, null, " ")}</pre>
       </html>
     `,
   };

@@ -2,6 +2,10 @@
 
 const { URL } = require("url");
 const fetch = require("node-fetch");
+const uuidv1 = require("uuid/v1");
+
+const AWS = require("aws-sdk");
+const documentClient = new AWS.DynamoDB.DocumentClient();
 
 const { signRequest } = require("../lib/httpSignatures");
 const { fetchJson } = require("../lib/request");
@@ -27,7 +31,7 @@ exports.deliver = async ({ record, context, config }) => {
   const { log } = config;
   const body = JSON.parse(record.body);
 
-  log.info("deliver", record, body);
+  log.info("deliver", { record, body });
 
   if (body.source === "inbox") {
     return deliverFromInbox({ record, body, context, config });
@@ -37,39 +41,59 @@ exports.deliver = async ({ record, context, config }) => {
 };
 
 async function deliverFromInbox({ record, body, context, config }) {
-  const { log, ACTOR_NAME, ACTOR_URL, SITE_URL } = config;
+  const { log, ACTOR_URL, SITE_URL, OBJECTS_TABLE: TableName } = config;
   const actorFrom = await fetchJson(body.activity.actor);
   const inbox = actorFrom.inbox;
 
   const insult = await insults.generate();
   log.debug("insult", { insult });
 
+  const objectUuid = uuidv1();
+  const object = {
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+    ],
+    type: "Note",
+    uuid: objectUuid,
+    id: `${SITE_URL}/objects/${objectUuid}`,
+    published: dateNow(),
+    attributedTo: ACTOR_URL,
+    inReplyTo: body.activity.url,
+    to: [body.activity.actor],
+    cc: [actorFrom.followers, ID_PUBLIC],
+    content: insult,
+    tag: [{ type: "Mention", href: body.activity.actor }],
+  };
+
+  const activityUuid = uuidv1();
   const activity = {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
       "https://w3id.org/security/v1",
     ],
+    uuid: activityUuid,
+    id: `${SITE_URL}/objects/${activityUuid}`,
     type: "Create",
-    actor: {
-      type: "Person",
-      id: ACTOR_URL,
-      name: ACTOR_NAME,
-      preferredUsername: ACTOR_NAME,
-      inbox: `${SITE_URL}/inbox`,
-      outbox: `${SITE_URL}/outbox`,
-    },
-    to: [body.activity.actor],
-    object: {
-      type: "Note",
-      published: dateNow(),
-      attributedTo: ACTOR_URL,
-      to: [body.activity.actor],
-      cc: [actorFrom.followers, ID_PUBLIC],
-      content: insult,
-      tag: [{ type: "Mention", href: body.activity.actor }],
-    },
+    actor: ACTOR_URL,
+    to: object.to,
+    object,
   };
+
   log.debug("activity", { activity });
+
+  const putResult = await documentClient
+    .batchWrite({
+      RequestItems: {
+        [TableName]: [
+          { PutRequest: { Item: object } },
+          { PutRequest: { Item: activity } },
+        ],
+      },
+    })
+    .promise();
+
+  log.debug("put", { putResult });
 
   return sendToRemoteInbox({ inbox, activity, config });
 }

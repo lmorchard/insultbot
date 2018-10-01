@@ -6,17 +6,21 @@ custom:
   prefixAuto: ${self:service}-${self:custom.stage}
   prefix: ${env:PREFIX, self:custom.prefixAuto}
   resourceNames:
+    objects: ${self:custom.prefix}-objects
     delivery: ${self:custom.prefix}-delivery
     sqs: ${self:custom.prefix}-messages
 
 provider:
   name: aws
   runtime: nodejs8.10
+
   environment:
     LOG_LEVEL: ${env:LOG_LEVEL, "debug"}
     HOSTNAME: ${env:HOSTNAME, "insultron.lmorchard.com"}
     ACTOR_NAME: ${env:ACTOR_NAME, "Insultron2000"}
     QUEUE_NAME: ${self:custom.resourceNames.sqs}
+    OBJECTS_TABLE: ${self:custom.resourceNames.objects}
+
   iamRoleStatements:
   - Effect: Allow
     Resource: arn:aws:sqs:*:*:${self:custom.resourceNames.sqs}
@@ -30,15 +34,42 @@ provider:
       - sqs:ReceiveMessage
       - sqs:SendMessage
       - sqs:SendMessageBatch
+  - Effect: Allow
+    Action:
+      - dynamodb:GetItem
+      - dynamodb:PutItem
+      - dynamodb:DeleteItem
+      - dynamodb:UpdateItem
+      - dynamodb:BatchGetItem
+      - dynamodb:BatchWriteItem
+      - dynamodb:Query
+      - dynamodb:Scan
+    Resource:
+      - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.objects}
 
 resources:
   Resources:
+
     DeliveryMessages:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:custom.resourceNames.sqs}
         MessageRetentionPeriod: 1209600
         VisibilityTimeout: 60
+
+    Objects:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.resourceNames.objects}
+        AttributeDefinitions:
+          - AttributeName: uuid
+            AttributeType: S
+        KeySchema:
+          - AttributeName: uuid
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
 
 functions:
   index:
@@ -56,6 +87,17 @@ functions:
     name: ${self:custom.prefix}-actorGet
     events:
       - http: GET actor
+  objectsGet:
+    handler: functions/objects.get
+    name: ${self:custom.prefix}-objectsGet
+    events:
+      - http:
+          method: GET
+          path: objects/{uuid}
+          request:
+            parameters:
+              paths:
+                uuid: true
   inboxGet:
     handler: functions/inbox.get
     name: ${self:custom.prefix}-inboxGet
