@@ -59,7 +59,7 @@ async function deliverFromInbox({ record, body, context, config }) {
     id: `${SITE_URL}/objects/${objectUuid}`,
     published: dateNow(),
     attributedTo: ACTOR_URL,
-    inReplyTo: body.activity.url,
+    inReplyTo: body.activity.object.url,
     to: [body.activity.actor],
     cc: [actorFrom.followers, ID_PUBLIC],
     content: insult,
