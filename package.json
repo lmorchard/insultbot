@@ -9,7 +9,7 @@
     "test:js": "mocha --require lib/test-setup.js --recursive \"{functions,lib}/**/*-test.js\"",
     "deploy": "cross-env NODE_ENV=production serverless deploy",
     "info": "serverless info",
-    "format": "prettier --write \"{functions,lib}/**/*.js\"",
+    "format": "prettier --trailing-comma=es5 --write \"{functions,lib}/**/*.js\"",
     "lint": "npm-run-all lint:*",
     "lint:js": "eslint .",
     "logs": "serverless logs",
@@ -38,6 +38,8 @@
   },
   "dependencies": {
     "aws-sdk": "^2.325.0",
+    "http-signature": "^1.2.0",
+    "node-fetch": "^2.2.0",
     "uuid": "^3.3.2"
   }
 }

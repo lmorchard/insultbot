@@ -12,8 +12,14 @@ custom:
 provider:
   name: aws
   runtime: nodejs8.10
+  environment:
+    LOG_LEVEL: ${env:LOG_LEVEL, "debug"}
+    HOSTNAME: ${env:HOSTNAME, "insultron.lmorchard.com"}
+    ACTOR_NAME: ${env:ACTOR_NAME, "Insultron2000"}
+    QUEUE_NAME: ${self:custom.resourceNames.sqs}
   iamRoleStatements:
   - Effect: Allow
+    Resource: arn:aws:sqs:*:*:${self:custom.resourceNames.sqs}
     Action:
       - sqs:ChangeMessageVisibility
       - sqs:ChangeMessageVisibilityBatch
@@ -24,20 +30,6 @@ provider:
       - sqs:ReceiveMessage
       - sqs:SendMessage
       - sqs:SendMessageBatch
-    Resource: arn:aws:sqs:*:*:${self:custom.resourceNames.sqs}
-
-# you can define service wide environment variables here
-#  environment:
-#    variable1: value1
-
-# you can add packaging information here
-#package:
-#  include:
-#    - include-me.js
-#    - include-me-dir/**
-#  exclude:
-#    - exclude-me.js
-#    - exclude-me-dir/**
 
 resources:
   Resources:
@@ -51,9 +43,19 @@ resources:
 functions:
   index:
     handler: functions/index.get
-    name: ${self:custom.prefix}-index
+    name: ${self:custom.prefix}-indexGet
     events:
       - http: GET /
+  webfingerGet:
+    handler: functions/webfinger.get
+    name: ${self:custom.prefix}-webfingerGet
+    events:
+      - http: GET .well-known/webfinger
+  actorGet:
+    handler: functions/actor.get
+    name: ${self:custom.prefix}-actorGet
+    events:
+      - http: GET actor
   inboxGet:
     handler: functions/inbox.get
     name: ${self:custom.prefix}-inboxGet
@@ -63,18 +65,18 @@ functions:
     handler: functions/inbox.post
     name: ${self:custom.prefix}-inboxPost
     events:
-      - http: POST /inbox
+      - http: POST inbox
   outboxGet:
     handler: functions/outbox.get
     name: ${self:custom.prefix}-outboxGet
     events:
-      - http: GET /outbox
+      - http: GET outbox
   periodic:
     timeout: 60
     handler: functions/periodic.handler
     name: ${self:custom.prefix}-periodic
     events:
-      - schedule: rate(1 minute)
+      - schedule: rate(1 hour)
   delivery:
     timeout: 60
     handler: functions/delivery.handler
