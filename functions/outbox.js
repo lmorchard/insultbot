@@ -1,6 +1,8 @@
 "use strict";
 
 module.exports.get = async (event, context) => {
+  const { log } = await config({ event, context });
+  log.info("summary");
   return {
     statusCode: 200,
     headers: {
