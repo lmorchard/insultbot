@@ -77,16 +77,19 @@ functions:
     name: ${self:custom.prefix}-indexGet
     events:
       - http: GET /
+
   webfingerGet:
     handler: functions/webfinger.get
     name: ${self:custom.prefix}-webfingerGet
     events:
       - http: GET .well-known/webfinger
+
   actorGet:
     handler: functions/actor.get
     name: ${self:custom.prefix}-actorGet
     events:
       - http: GET actor
+
   objectsGet:
     handler: functions/objects.get
     name: ${self:custom.prefix}-objectsGet
@@ -98,27 +101,26 @@ functions:
             parameters:
               paths:
                 uuid: true
-  inboxGet:
-    handler: functions/inbox.get
-    name: ${self:custom.prefix}-inboxGet
-    events:
-      - http: GET inbox
+
   inboxPost:
     handler: functions/inbox.post
     name: ${self:custom.prefix}-inboxPost
     events:
       - http: POST inbox
+
   outboxGet:
     handler: functions/outbox.get
     name: ${self:custom.prefix}-outboxGet
     events:
       - http: GET outbox
+
   periodic:
     timeout: 60
     handler: functions/periodic.handler
     name: ${self:custom.prefix}-periodic
     events:
       - schedule: rate(1 hour)
+
   delivery:
     timeout: 60
     handler: functions/delivery.handler

@@ -17,14 +17,12 @@ const ID_PUBLIC = "https://www.w3.org/ns/activitystreams#Public";
 
 exports.handler = async (event, context) => {
   const config = await setupConfig({ event, context });
-  const { log } = config;
-
   await insults.init();
-
-  const results = await Promise.all(
-    event.Records.map(record => exports.deliver({ record, context, config }))
+  await Promise.all(
+    event.Records.map(record =>
+      exports.deliver({ record, context, config })
+    )
   );
-  log.info("batchComplete", { count: results.length });
 };
 
 exports.deliver = async ({ record, context, config }) => {
@@ -41,12 +39,62 @@ exports.deliver = async ({ record, context, config }) => {
 };
 
 async function deliverFromInbox({ record, body, context, config }) {
-  const { log, ACTOR_URL, SITE_URL, OBJECTS_TABLE: TableName } = config;
-  const actorFrom = await fetchJson(body.activity.actor);
-  const inbox = actorFrom.inbox;
+  const { log } = config;
+  const { activity = {} } = body;
+  const { object = {} } = activity;
 
-  const insult = await insults.generate();
-  log.debug("insult", { insult });
+  if (activity.type == "Create" && object.type == "Note") {
+    return sendCreateNote({
+      config,
+      actor: activity.actor,
+      inReplyTo: object.url,
+      content: await insults.generate(),
+    });
+  }
+
+  if (activity.type == "Like") {
+    return sendCreateNote({
+      config,
+      actor: activity.actor,
+      inReplyTo: object.url,
+      content: `Oh you liked that, did you? ${await insults.generate()}`,
+    });
+  }
+
+  if (activity.type == "Follow") {
+    log.info("follow", { actor: activity.actor });
+    return sendCreateNote({
+      config,
+      actor: activity.actor,
+      inReplyTo: object.url,
+      content: `Thanks for the follow, ${await insults.generate()}`,
+    });
+  }
+
+  if (activity.type == "Undo" && object.type == "Follow") {
+    log.info("unfollow", { actor: activity.actor });
+    return sendCreateNote({
+      config,
+      actor: activity.actor,
+      inReplyTo: object.url,
+      content: `I will miss you, ${await insults.generate()}`,
+    });
+  }
+
+  return Promise.resolve();
+}
+
+async function sendCreateNote({ config, actor, content, inReplyTo }) {
+  const { log, ACTOR_URL, SITE_URL, OBJECTS_TABLE: TableName } = config;
+
+  let actorDeref, inbox;
+  try {
+    actorDeref = await fetchJson(actor);
+    inbox = actorDeref.inbox;
+  } catch (error) {
+    log.error("actorFetchFailure", { actor, error });
+    return Promise.resolve();
+  }
 
   const objectUuid = uuidv1();
   const object = {
@@ -59,11 +107,11 @@ async function deliverFromInbox({ record, body, context, config }) {
     id: `${SITE_URL}/objects/${objectUuid}`,
     published: dateNow(),
     attributedTo: ACTOR_URL,
-    inReplyTo: body.activity.object.url,
-    to: [body.activity.actor],
-    cc: [actorFrom.followers, ID_PUBLIC],
-    content: insult,
-    tag: [{ type: "Mention", href: body.activity.actor }],
+    inReplyTo,
+    to: [actor],
+    cc: [actorDeref.followers, ID_PUBLIC],
+    content: `<p><span class="h-card"><a href="${actorDeref.url}" class="u-url mention">@<span>${actorDeref.preferredUsername}</span></a></span> ${content}</p>`,
+    tag: [{ type: "Mention", href: actor }],
   };
 
   const activityUuid = uuidv1();
@@ -77,6 +125,7 @@ async function deliverFromInbox({ record, body, context, config }) {
     type: "Create",
     actor: ACTOR_URL,
     to: object.to,
+    cc: [actorDeref.followers, ID_PUBLIC],
     object,
   };
 
