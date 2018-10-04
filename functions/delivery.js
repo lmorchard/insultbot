@@ -162,12 +162,12 @@ async function sendCreateNote({
   log.debug("createNoteActivity", { activity });
 
   const withContext = data =>
-    Object.assign({}, data, {
+    Object.assign({
       "@context": [
         "https://www.w3.org/ns/activitystreams",
         "https://w3id.org/security/v1",
       ],
-    });
+    }, data);
 
   const putResult = await documentClient
     .batchWrite({
