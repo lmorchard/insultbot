@@ -7,6 +7,7 @@ custom:
   prefix: ${env:PREFIX, self:custom.prefixAuto}
   resourceNames:
     objects: ${self:custom.prefix}-objects
+    followers: ${self:custom.prefix}-followers
     delivery: ${self:custom.prefix}-delivery
     sqs: ${self:custom.prefix}-messages
 
@@ -20,6 +21,7 @@ provider:
     ACTOR_NAME: ${env:ACTOR_NAME, "Insultron2000"}
     QUEUE_NAME: ${self:custom.resourceNames.sqs}
     OBJECTS_TABLE: ${self:custom.resourceNames.objects}
+    FOLLOWERS_TABLE: ${self:custom.resourceNames.followers}
 
   iamRoleStatements:
   - Effect: Allow
@@ -46,6 +48,7 @@ provider:
       - dynamodb:Scan
     Resource:
       - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.objects}
+      - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.followers}
 
 resources:
   Resources:
@@ -66,6 +69,20 @@ resources:
             AttributeType: S
         KeySchema:
           - AttributeName: uuid
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+
+    Followers:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.resourceNames.followers}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
             KeyType: HASH
         ProvisionedThroughput:
           ReadCapacityUnits: 5

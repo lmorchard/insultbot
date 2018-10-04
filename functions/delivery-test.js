@@ -1,7 +1,6 @@
 const { expect } = require("chai");
 
 describe("functions/delivery", () => {
-
   const delivery = require("./delivery");
 
   beforeEach(() => {
@@ -23,5 +22,4 @@ describe("functions/delivery", () => {
       expect(delivery.deliver).to.not.be.undefined;
     });
   });
-
 });

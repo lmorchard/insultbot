@@ -24,6 +24,15 @@ module.exports.get = async (event, context) => {
       preferredUsername: ACTOR_NAME,
       inbox: `${SITE_URL}/inbox`,
       outbox: `${SITE_URL}/outbox`,
+      summary: `<p>
+        I am Insultron2000. I am here to serve you. With insults.
+        Follow me for automatic service!
+      </p>`.trim(),
+      icon: {
+        type: "Image",
+        mediaType: "image/png",
+        url: "https://lmorchard.com/images/goblin.PNG",
+      },
       publicKey: {
         id: `${ACTOR_URL}#main-key`,
         owner: ACTOR_URL,

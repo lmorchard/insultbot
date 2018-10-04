@@ -26,7 +26,7 @@ module.exports.post = async (event, context) => {
     });
   }
 
-  // Skip verification for Deletebecause the public key will be gone.
+  // Skip verification for Delete because the public key will be gone.
   if (activity.type !== "Delete") {
     try {
       const signatureVerified = await verifyRequest({
