@@ -117,6 +117,14 @@ async function handleFromInbox({ record, body, context, config }) {
   return Promise.resolve();
 }
 
+const withContext = data =>
+  Object.assign({
+    "@context": [
+      "https://www.w3.org/ns/activitystreams",
+      "https://w3id.org/security/v1",
+    ],
+  }, data);
+
 async function sendCreateNote({
   config,
   actor,
@@ -138,14 +146,7 @@ async function sendCreateNote({
     to: [ID_PUBLIC],
     cc: [actor, followers],
     tag: [{ type: "Mention", href: actor }],
-    content: `
-      <p>
-        <span class="h-card">
-          <a href="${url}" class="u-url mention">@<span>${preferredUsername}</span></a>
-        </span>
-        ${content}
-      </p>
-    `.trim(),
+    content: `<p><span class="h-card"><a href="${url}" class="u-url mention">@<span>${preferredUsername}</span></a></span>${content}</p>`,
   };
 
   const activityUuid = uuidv1();
@@ -160,14 +161,6 @@ async function sendCreateNote({
   };
 
   log.debug("createNoteActivity", { activity });
-
-  const withContext = data =>
-    Object.assign({
-      "@context": [
-        "https://www.w3.org/ns/activitystreams",
-        "https://w3id.org/security/v1",
-      ],
-    }, data);
 
   const putResult = await documentClient
     .batchWrite({
@@ -196,7 +189,7 @@ async function sendToRemoteInbox({ inbox, activity, config }) {
     Host: host,
     Date: new Date().toUTCString(),
   };
-  const body = JSON.stringify(activity);
+  const body = JSON.stringify(withContext(activity));
 
   const signature = signRequest({
     keyId: ACTOR_KEY_URL,
