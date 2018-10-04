@@ -146,7 +146,7 @@ async function sendCreateNote({
     to: [ID_PUBLIC],
     cc: [actor, followers],
     tag: [{ type: "Mention", href: actor }],
-    content: `<p><span class="h-card"><a href="${url}" class="u-url mention">@<span>${preferredUsername}</span></a></span>${content}</p>`,
+    content: `<p><span class="h-card"><a href="${url}" class="u-url mention">@<span>${preferredUsername}</span></a> </span>${content}</p>`,
   };
 
   const activityUuid = uuidv1();
