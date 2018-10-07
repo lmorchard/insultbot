@@ -14,7 +14,7 @@ module.exports.get = async (event, context) => {
 
   return response({
     event,
-    html: htmlActor,
+    html: html.actor,
     jsonType: "application/activity+json",
     data: {
       "@context": [
@@ -47,14 +47,3 @@ module.exports.get = async (event, context) => {
     },
   });
 };
-
-const htmlActor = async ({ id, name, summary, icon }) =>
-  html.base({
-    body: `
-      <div>
-        <h1>${name}</h1>
-        <img src="${icon.url}" />
-        <p>${summary}</p>
-      </div>
-      `,
-  });

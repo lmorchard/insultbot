@@ -9,17 +9,9 @@ module.exports.get = async (event, context) => {
   log.info("summary");
   return response({
     event,
-    html: htmlOutbox,
+    html: html.outbox,
     data: {
       items: [],
     },
   });
 };
-
-const htmlOutbox = ({ items }) =>
-  html.base({
-    body: `
-      <h1>Hello world!</h1>
-      <div>${items}</div>
-      `,
-  });

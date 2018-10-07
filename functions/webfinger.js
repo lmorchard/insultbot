@@ -23,7 +23,7 @@ module.exports.get = async (event, context) => {
   return response({
     event,
     jsonType: "application/jrd+json",
-    html: htmlWebfinger,
+    html: html.webfinger,
     data: {
       subject: expectedAcct,
       links: [
@@ -36,22 +36,3 @@ module.exports.get = async (event, context) => {
     },
   });
 };
-
-const htmlWebfinger = ({ subject, links }) =>
-  html.base({
-    body: `
-      <dl>
-        <dt>Subject</dt><dd>${subject}</dd>
-        <dt>Links</dt>
-        <dd>
-          <ul>
-            ${links.map(
-              ({ rel, type, href }) => `
-              <li><a href="${href}">${rel} - ${type}</a></li>
-            `
-            )}
-          </ul>
-        </dd>
-      </dl>
-      `,
-  });

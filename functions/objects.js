@@ -21,22 +21,10 @@ module.exports.get = async (event, context) => {
     return response({
       event,
       jsonType: "application/activity+json",
-      html: htmlObject,
+      html: html.object,
       data: getResult.Item,
     });
   } catch (e) {
     return response.notFound({ event });
   }
 };
-
-const htmlObject = ({ id, type, published, to, cc, tag, content, object }) =>
-  html.base({
-    body: `
-      <div>
-        <h1>${id}</h1>
-        <h2>${type}</h2>
-        <h3>${published}</h3>
-        <p>${content}</p>
-      </div>
-      `,
-  });
