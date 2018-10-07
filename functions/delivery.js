@@ -118,12 +118,15 @@ async function handleFromInbox({ record, body, context, config }) {
 }
 
 const withContext = data =>
-  Object.assign({
-    "@context": [
-      "https://www.w3.org/ns/activitystreams",
-      "https://w3id.org/security/v1",
-    ],
-  }, data);
+  Object.assign(
+    {
+      "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/v1",
+      ],
+    },
+    data
+  );
 
 async function sendCreateNote({
   config,

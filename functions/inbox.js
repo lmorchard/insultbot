@@ -21,9 +21,7 @@ module.exports.post = async (event, context) => {
     activity = JSON.parse(body);
   } catch (e) {
     log.error("malformedBody", { body });
-    return response.badRequest({
-      data: { error: "malformed body" },
-    });
+    return response.badRequest({ event, data: { error: "malformed body" } });
   }
 
   // Skip verification for Delete because the public key will be gone.
@@ -38,12 +36,14 @@ module.exports.post = async (event, context) => {
       if (!signatureVerified) {
         log.warning("invalidSignature", { method, path, headers });
         return response.forbidden({
+          event,
           data: { error: "invalid HTTP signature" },
         });
       }
     } catch (e) {
       log.error("signatureVerificationFailed", { error: e });
       return response.forbidden({
+        event,
         data: { error: "HTTP signature validation failed" },
       });
     }
@@ -59,5 +59,5 @@ module.exports.post = async (event, context) => {
   }).promise();
   log.info("enqueued", { queueSendResult });
 
-  return response.json({ status: 202 });
+  return response.accepted({ event });
 };
