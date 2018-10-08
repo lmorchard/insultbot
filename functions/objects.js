@@ -20,6 +20,7 @@ module.exports.get = async (event, context) => {
     log.info("summary");
     return response({
       event,
+      headers: { "Cache-Control": "max-age=31536000, immutable" },
       jsonType: "application/activity+json",
       html: html.object,
       data: getResult.Item,

@@ -48,7 +48,9 @@ provider:
       - dynamodb:Scan
     Resource:
       - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.objects}
+      - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.objects}/index/*
       - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.followers}
+      - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.followers}/index/*
 
 resources:
   Resources:
@@ -67,12 +69,28 @@ resources:
         AttributeDefinitions:
           - AttributeName: uuid
             AttributeType: S
+          - AttributeName: type
+            AttributeType: S
+          - AttributeName: published
+            AttributeType: S
         KeySchema:
           - AttributeName: uuid
             KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: byPublished
+            KeySchema:
+              - AttributeName: type
+                KeyType: HASH
+              - AttributeName: published
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
         ProvisionedThroughput:
-          ReadCapacityUnits: 5
-          WriteCapacityUnits: 5
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
 
     Followers:
       Type: AWS::DynamoDB::Table
@@ -85,8 +103,8 @@ resources:
           - AttributeName: id
             KeyType: HASH
         ProvisionedThroughput:
-          ReadCapacityUnits: 5
-          WriteCapacityUnits: 5
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
 
 functions:
   index:
@@ -131,12 +149,12 @@ functions:
     events:
       - http: GET outbox
 
-  periodic:
-    timeout: 60
-    handler: functions/periodic.handler
-    name: ${self:custom.prefix}-periodic
-    events:
-      - schedule: rate(1 hour)
+  #periodic:
+  #  timeout: 60
+  #  handler: functions/periodic.handler
+  #  name: ${self:custom.prefix}-periodic
+  #  events:
+  #    - schedule: rate(1 hour)
 
   delivery:
     timeout: 60

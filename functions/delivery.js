@@ -10,7 +10,7 @@ const documentClient = new AWS.DynamoDB.DocumentClient();
 const { signRequest } = require("../lib/httpSignatures");
 const { fetchJson } = require("../lib/request");
 const setupConfig = require("../lib/config");
-const { dateNow } = require("../lib/utils");
+const { dateNow, withContext } = require("../lib/utils");
 const insults = require("../lib/insults");
 
 const ID_PUBLIC = "https://www.w3.org/ns/activitystreams#Public";
@@ -117,17 +117,6 @@ async function handleFromInbox({ record, body, context, config }) {
   return Promise.resolve();
 }
 
-const withContext = data =>
-  Object.assign(
-    {
-      "@context": [
-        "https://www.w3.org/ns/activitystreams",
-        "https://w3id.org/security/v1",
-      ],
-    },
-    data
-  );
-
 async function sendCreateNote({
   config,
   actor,
@@ -158,6 +147,7 @@ async function sendCreateNote({
     id: `${SITE_URL}/objects/${activityUuid}`,
     type: "Create",
     actor: ACTOR_URL,
+    published: dateNow(),
     to: object.to,
     cc: object.cc,
     object,

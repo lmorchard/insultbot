@@ -12,7 +12,8 @@ module.exports.get = async (event, context) => {
 
   const expectedAcct = `acct:${ACTOR_NAME}@${HOSTNAME}`;
 
-  const { resource } = event.queryStringParameters || {};
+  const { queryStringParameters = {} } = event;
+  const { resource } = queryStringParameters;
 
   if (resource !== expectedAcct) {
     log.warning("notfound", { resource, expectedAcct });
@@ -22,6 +23,7 @@ module.exports.get = async (event, context) => {
   log.info("found", { resource });
   return response({
     event,
+    headers: { "Cache-Control": "max-age=31536000, immutable" },
     jsonType: "application/jrd+json",
     html: html.webfinger,
     data: {

@@ -7,12 +7,12 @@ This is a bot for insulting people automatically via ActivityPub.
 
 * Assemble an actual public outbox for messages sent
 
+* Better HTML views of various things for better browser experience
+
 * Move read-only resources like webfinger, agent, and objects to static S3
   website hosting bucket
 
-* Avatar image
-
-* HTML views of various things for better browser experience
+* Consider dropping DynamoDB for just S3?
 
 * Record followers, periodically insult them
 
