@@ -65,15 +65,11 @@ async function handleFromInbox({ record, body, context, config }) {
       inReplyTo: object.url,
       content,
     });
-
-    log.debug("sendResponse", { inbox: actorDeref.inbox });
     await sendToRemoteInbox({ inbox: actorDeref.inbox, activity, config });
-
     const sharedInboxes = await db.getSharedInboxes({
       followersTableName: FOLLOWERS_TABLE,
     });
     for (let inbox of sharedInboxes) {
-      log.debug("sendShared", { inbox });
       await sendToRemoteInbox({ inbox, activity, config });
     }
   };
@@ -129,13 +125,7 @@ async function handleFromInbox({ record, body, context, config }) {
   return Promise.resolve();
 }
 
-async function createNote({
-  config,
-  actor,
-  actorDeref,
-  content,
-  inReplyTo,
-}) {
+async function createNote({ config, actor, actorDeref, content, inReplyTo }) {
   const { log, ACTOR_URL, SITE_URL, OBJECTS_TABLE: TableName } = config;
   const { followers, url, preferredUsername } = actorDeref;
 
