@@ -5,7 +5,7 @@ This is a bot for insulting people automatically via ActivityPub.
 
 ## TODO
 
-* Assemble an actual public outbox for messages sent
+* Move outgoing delivery to separate queue tasks, reduce logging
 
 * Better HTML views of various things for better browser experience
 

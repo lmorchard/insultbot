@@ -1,5 +1,7 @@
 "use strict";
 
+const assign = Object.assign;
+
 const { URL } = require("url");
 const fetch = require("node-fetch");
 const uuidv1 = require("uuid/v1");
@@ -12,6 +14,7 @@ const { fetchJson } = require("../lib/request");
 const setupConfig = require("../lib/config");
 const { dateNow, withContext } = require("../lib/utils");
 const insults = require("../lib/insults");
+const db = require("../lib/db");
 
 const ID_PUBLIC = "https://www.w3.org/ns/activitystreams#Public";
 
@@ -55,16 +58,25 @@ async function handleFromInbox({ record, body, context, config }) {
     return Promise.resolve();
   }
 
-  const send = content =>
-    sendCreateNote(
-      Object.assign({
-        config,
-        actor,
-        actorDeref,
-        inReplyTo: object.url,
-        content,
-      })
-    );
+  // TODO: Move all of this delivery into separate queue function executions
+  const send = async content => {
+    const base = {
+      config,
+      actor,
+      actorDeref,
+      inReplyTo: object.url,
+      content,
+    };
+    log.debug("sendResponse", { inbox: actorDeref.inbox });
+    await sendCreateNote(assign({ inbox: actorDeref.inbox }, base));
+    const sharedInboxes = await db.getSharedInboxes({
+      followersTableName: FOLLOWERS_TABLE,
+    });
+    for (let inbox of sharedInboxes) {
+      log.debug("sendShared", { inbox });
+      await sendCreateNote(assign({ inbox }, base));
+    }
+  };
 
   if (activity.type == "Create" && object.type == "Note") {
     return send(await insults.generate());
@@ -119,13 +131,14 @@ async function handleFromInbox({ record, body, context, config }) {
 
 async function sendCreateNote({
   config,
+  inbox,
   actor,
   actorDeref,
   content,
   inReplyTo,
 }) {
   const { log, ACTOR_URL, SITE_URL, OBJECTS_TABLE: TableName } = config;
-  const { inbox, followers, url, preferredUsername } = actorDeref;
+  const { followers, url, preferredUsername } = actorDeref;
 
   const objectUuid = uuidv1();
   const object = {
