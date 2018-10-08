@@ -1,7 +1,5 @@
 "use strict";
 
-const assign = Object.assign;
-
 const { URL } = require("url");
 const fetch = require("node-fetch");
 const uuidv1 = require("uuid/v1");
@@ -60,22 +58,23 @@ async function handleFromInbox({ record, body, context, config }) {
 
   // TODO: Move all of this delivery into separate queue function executions
   const send = async content => {
-    const base = {
+    const activity = await createNote({
       config,
       actor,
       actorDeref,
       inReplyTo: object.url,
       content,
-    };
+    });
+
     log.debug("sendResponse", { inbox: actorDeref.inbox });
-    await sendCreateNote(assign({ inbox: actorDeref.inbox }, base));
+    await sendToRemoteInbox({ inbox: actorDeref.inbox, activity, config });
+
     const sharedInboxes = await db.getSharedInboxes({
       followersTableName: FOLLOWERS_TABLE,
-      exceptActorId: actorDeref.id,
     });
     for (let inbox of sharedInboxes) {
       log.debug("sendShared", { inbox });
-      await sendCreateNote(assign({ inbox }, base));
+      await sendToRemoteInbox({ inbox, activity, config });
     }
   };
 
@@ -130,9 +129,8 @@ async function handleFromInbox({ record, body, context, config }) {
   return Promise.resolve();
 }
 
-async function sendCreateNote({
+async function createNote({
   config,
-  inbox,
   actor,
   actorDeref,
   content,
@@ -182,7 +180,7 @@ async function sendCreateNote({
 
   log.debug("putCreateNoteActivity", { putResult });
 
-  return sendToRemoteInbox({ inbox, activity, config });
+  return activity;
 }
 
 async function sendToRemoteInbox({ inbox, activity, config }) {
