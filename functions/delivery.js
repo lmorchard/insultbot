@@ -71,6 +71,7 @@ async function handleFromInbox({ record, body, context, config }) {
     await sendCreateNote(assign({ inbox: actorDeref.inbox }, base));
     const sharedInboxes = await db.getSharedInboxes({
       followersTableName: FOLLOWERS_TABLE,
+      exceptActorId: actorDeref.id,
     });
     for (let inbox of sharedInboxes) {
       log.debug("sendShared", { inbox });
