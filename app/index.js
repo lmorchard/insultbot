@@ -1,6 +1,7 @@
 const AWS = require("aws-sdk");
 AWS.config.update({ region: "us-east-1" });
 
+const assign = Object.assign;
 const Koa = require("koa");
 const Router = require("koa-router");
 
@@ -35,8 +36,7 @@ function init() {
   app.listen(PORT);
 }
 
-async function lambdaFn(ctx, moduleName, fnName) {
-  const { request, response } = ctx;
+async function lambdaFn({ request, response }, moduleName, fnName) {
   const {
     statusCode: status,
     headers,
@@ -45,7 +45,7 @@ async function lambdaFn(ctx, moduleName, fnName) {
     {
       method: request.method,
       path: request.url,
-      pathParameters: ctx.params,
+      pathParameters: request.params,
       headers: request.headers,
       queryStringParameters: request.query,
     },
@@ -55,9 +55,7 @@ async function lambdaFn(ctx, moduleName, fnName) {
       functionVersion: "$LATEST",
     }
   );
-  response.status = status;
-  response.set(headers);
-  response.body = body;
+  assign(response, { status, body }).set(headers);
 }
 
 init();
