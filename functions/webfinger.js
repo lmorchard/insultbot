@@ -17,7 +17,7 @@ module.exports.get = async (event, context) => {
 
   if (resource !== expectedAcct) {
     log.warning("notfound", { resource, expectedAcct });
-    return response.notFound();
+    return response.notFound({ event });
   }
 
   log.info("found", { resource });
