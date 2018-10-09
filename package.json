@@ -6,7 +6,7 @@
   "main": "handler.js",
   "scripts": {
     "test": "npm-run-all test:*",
-    "test:js": "mocha --require lib/test-setup.js --recursive \"{functions,lib}/**/*-test.js\"",
+    "test:js": "mocha --require lib/test-setup --recursive \"{functions,lib}/**/*-test.js\"",
     "deploy": "cross-env NODE_ENV=production serverless deploy",
     "info": "serverless info",
     "format": "prettier --trailing-comma=es5 --write \"{functions,lib}/**/*.js\"",
