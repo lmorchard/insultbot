@@ -39,7 +39,7 @@ const lambdaFn = (moduleName, fnName) => async ({ request, response }) => {
     statusCode: status,
     headers,
     body,
-  } = await require(`../functions/${moduleName}`)[fnName](
+  } = await require(`./functions/${moduleName}`)[fnName](
     {
       method: request.method,
       path: request.url,
