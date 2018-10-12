@@ -21,14 +21,12 @@ function init() {
   const router = new Router();
 
   router
-    .get("/", async ctx => lambdaFn(ctx, "index", "get"))
-    .get("/.well-known/webfinger", async ctx =>
-      lambdaFn(ctx, "webfinger", "get")
-    )
-    .get("/actor", async ctx => lambdaFn(ctx, "actor", "get"))
-    .get("/objects/:uuid", async ctx => lambdaFn(ctx, "objects", "get"))
-    .post("/inbox", async ctx => lambdaFn(ctx, "inbox", "post"))
-    .get("/outbox", async ctx => lambdaFn(ctx, "outbox", "get"));
+    .get("/", lambdaFn("index", "get"))
+    .get("/.well-known/webfinger", lambdaFn("webfinger", "get"))
+    .get("/actor", lambdaFn("actor", "get"))
+    .get("/objects/:uuid", lambdaFn("objects", "get"))
+    .post("/inbox", lambdaFn("inbox", "post"))
+    .get("/outbox", lambdaFn("outbox", "get"));
 
   app.use(router.routes()).use(router.allowedMethods());
 
@@ -36,7 +34,7 @@ function init() {
   app.listen(PORT);
 }
 
-async function lambdaFn({ request, response }, moduleName, fnName) {
+const lambdaFn = (moduleName, fnName) => async ({ request, response }) => {
   const {
     statusCode: status,
     headers,
