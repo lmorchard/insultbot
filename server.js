@@ -54,6 +54,6 @@ const lambdaFn = (moduleName, fnName) => async ({ request, response }) => {
     }
   );
   assign(response, { status, body }).set(headers);
-}
+};
 
 init();
