@@ -20,8 +20,7 @@ custom:
       'deploy:createDeploymentArtifacts': npm run build
   s3Sync:
     - bucketName: ${self:custom.resourceNames.staticBucket}
-      bucketPrefix: static/
-      localDir: static
+      localDir: build
       acl: public-read
       defaultContentType: text/html
       params:

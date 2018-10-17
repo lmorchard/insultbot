@@ -52,7 +52,7 @@ module.exports.get = async (event, context) => {
     icon: {
       type: "Image",
       mediaType: "image/png",
-      url: `${SITE_URL}/static/avatar.png`,
+      url: `${SITE_URL}/avatar.png`,
     },
     publicKey: {
       id: `${ACTOR_URL}#main-key`,

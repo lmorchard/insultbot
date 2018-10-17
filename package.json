@@ -30,6 +30,7 @@
     "eslint-plugin-mozilla": "^0.16.1",
     "eslint-plugin-no-unsanitized": "^3.0.2",
     "eslint-plugin-node": "^7.0.1",
+    "fs-extra": "^7.0.0",
     "koa": "^2.5.3",
     "koa-router": "^7.4.0",
     "mocha": "^5.2.0",
@@ -39,6 +40,8 @@
     "onchange": "^5.0.0",
     "prettier": "^1.14.3",
     "serverless": "^1.32.0",
+    "serverless-plugin-scripts": "^1.0.2",
+    "serverless-s3-sync": "^1.7.0",
     "sinon": "^6.3.4"
   },
   "dependencies": {
@@ -46,8 +49,7 @@
     "aws-sdk": "^2.325.0",
     "http-signature": "^1.2.0",
     "node-fetch": "^2.2.0",
-    "serverless-plugin-scripts": "^1.0.2",
-    "serverless-s3-sync": "^1.7.0",
-    "uuid": "^3.3.2"
+    "uuid": "^3.3.2",
+    "webfinger": "^0.4.2"
   }
 }
