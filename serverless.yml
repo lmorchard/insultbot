@@ -1,5 +1,8 @@
 service: insultbot
 
+plugins:
+  - serverless-s3-sync
+
 custom:
   region: ${self:provider.region}
   stage: ${env:STAGE, self:custom.localConfig.stage, opt:stage, 'dev'}
@@ -10,6 +13,19 @@ custom:
     followers: ${self:custom.prefix}-followers
     delivery: ${self:custom.prefix}-delivery
     sqs: ${self:custom.prefix}-messages
+    staticBucket: ${self:custom.prefix}-site
+  s3Sync:
+    - bucketName: ${self:custom.resourceNames.staticBucket}
+      bucketPrefix: static/
+      localDir: static
+      acl: public-read
+      defaultContentType: text/html
+      params:
+        - index.html:
+            CacheControl: 'no-cache'
+        - "*.js":
+            CacheControl: 'no-cache'
+            # CacheControl: 'public, max-age=31536000'
 
 provider:
   name: aws
@@ -22,8 +38,15 @@ provider:
     QUEUE_NAME: ${self:custom.resourceNames.sqs}
     OBJECTS_TABLE: ${self:custom.resourceNames.objects}
     FOLLOWERS_TABLE: ${self:custom.resourceNames.followers}
+    STATIC_BUCKET: ${self:custom.resourceNames.staticBucket}
 
   iamRoleStatements:
+  - Effect: Allow
+    Resource:
+      - arn:aws:s3:::${self:custom.resourceNames.staticBucket}
+      - arn:aws:s3:::${self:custom.resourceNames.staticBucket}/*
+    Action:
+      - s3:*
   - Effect: Allow
     Resource: arn:aws:sqs:*:*:${self:custom.resourceNames.sqs}
     Action:
@@ -61,6 +84,29 @@ resources:
         QueueName: ${self:custom.resourceNames.sqs}
         MessageRetentionPeriod: 1209600
         VisibilityTimeout: 60
+
+    StaticSite:
+      Type: AWS::S3::Bucket
+      Properties:
+        AccessControl: PublicRead
+        BucketName: ${self:custom.resourceNames.staticBucket}
+        WebsiteConfiguration:
+          IndexDocument: index.html
+
+    StaticSiteS3BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket:
+          Ref: StaticSite
+        PolicyDocument:
+          Statement:
+            - Sid: PublicReadGetObject
+              Effect: Allow
+              Principal: "*"
+              Action:
+              - s3:GetObject
+              Resource:
+                Fn::Join: [ "", [ "arn:aws:s3:::", { "Ref": "StaticSite" }, "/*" ] ]
 
     Objects:
       Type: AWS::DynamoDB::Table
@@ -125,17 +171,17 @@ functions:
     events:
       - http: GET actor
 
-  objectsGet:
-    handler: functions/objects.get
-    name: ${self:custom.prefix}-objectsGet
-    events:
-      - http:
-          method: GET
-          path: objects/{uuid}
-          request:
-            parameters:
-              paths:
-                uuid: true
+  # objectsGet:
+  #   handler: functions/objects.get
+  #   name: ${self:custom.prefix}-objectsGet
+  #   events:
+  #     - http:
+  #         method: GET
+  #         path: objects/{uuid}
+  #         request:
+  #           parameters:
+  #             paths:
+  #               uuid: true
 
   inboxPost:
     handler: functions/inbox.post

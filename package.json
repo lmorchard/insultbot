@@ -45,6 +45,7 @@
     "aws-sdk": "^2.325.0",
     "http-signature": "^1.2.0",
     "node-fetch": "^2.2.0",
+    "serverless-s3-sync": "^1.7.0",
     "uuid": "^3.3.2"
   }
 }

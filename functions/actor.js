@@ -37,6 +37,7 @@ module.exports.get = async (event, context) => {
     ],
     type: "Person",
     id: ACTOR_URL,
+    url: SITE_URL,
     name: ACTOR_NAME,
     preferredUsername: ACTOR_NAME,
     inbox: `${SITE_URL}/inbox`,
@@ -51,7 +52,7 @@ module.exports.get = async (event, context) => {
     icon: {
       type: "Image",
       mediaType: "image/png",
-      url: "https://lmorchard.com/images/goblin.PNG",
+      url: `${SITE_URL}/static/avatar.png`,
     },
     publicKey: {
       id: `${ACTOR_URL}#main-key`,
