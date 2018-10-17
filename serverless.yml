@@ -171,18 +171,6 @@ functions:
     events:
       - http: GET actor
 
-  # objectsGet:
-  #   handler: functions/objects.get
-  #   name: ${self:custom.prefix}-objectsGet
-  #   events:
-  #     - http:
-  #         method: GET
-  #         path: objects/{uuid}
-  #         request:
-  #           parameters:
-  #             paths:
-  #               uuid: true
-
   inboxPost:
     handler: functions/inbox.post
     name: ${self:custom.prefix}-inboxPost

@@ -24,7 +24,6 @@ function init() {
     .get("/", lambdaFn("index", "get"))
     .get("/.well-known/webfinger", lambdaFn("webfinger", "get"))
     .get("/actor", lambdaFn("actor", "get"))
-    .get("/objects/:uuid", lambdaFn("objects", "get"))
     .post("/inbox", lambdaFn("inbox", "post"))
     .get("/outbox", lambdaFn("outbox", "get"));
 
