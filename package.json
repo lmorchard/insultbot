@@ -7,6 +7,7 @@
   "scripts": {
     "test": "npm-run-all test:*",
     "test:js": "mocha --require lib/test-setup --recursive \"{functions,lib}/**/*-test.js\"",
+    "build": "node bin/build.js",
     "deploy": "cross-env NODE_ENV=production serverless deploy",
     "info": "serverless info",
     "format": "prettier --trailing-comma=es5 --write \"{functions,lib,app}/**/*.js\"",
@@ -45,6 +46,7 @@
     "aws-sdk": "^2.325.0",
     "http-signature": "^1.2.0",
     "node-fetch": "^2.2.0",
+    "serverless-plugin-scripts": "^1.0.2",
     "serverless-s3-sync": "^1.7.0",
     "uuid": "^3.3.2"
   }

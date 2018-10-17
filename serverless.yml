@@ -1,6 +1,7 @@
 service: insultbot
 
 plugins:
+  - serverless-plugin-scripts
   - serverless-s3-sync
 
 custom:
@@ -14,6 +15,9 @@ custom:
     delivery: ${self:custom.prefix}-delivery
     sqs: ${self:custom.prefix}-messages
     staticBucket: ${self:custom.prefix}-site
+  scripts:
+    hooks:
+      'deploy:createDeploymentArtifacts': npm run build
   s3Sync:
     - bucketName: ${self:custom.resourceNames.staticBucket}
       bucketPrefix: static/
