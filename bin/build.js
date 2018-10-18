@@ -21,7 +21,6 @@ async function init() {
   console.log("Building static resources:");
   await Promise.all([
     hostmeta,
-    webfinger,
     actor,
     indexHTML,
   ].map(async (fn) => {
@@ -42,20 +41,6 @@ const hostmeta = async ({ SITE_URL }) => [
         type="application/xrd+xml"
         template="${SITE_URL}/.well-known/webfinger?resource={uri}" />
     </XRD>`.trim(),
-];
-
-const webfinger = async ({ ACTOR_NAME, HOSTNAME, ACTOR_URL }) => [
-  `.well-known/webfinger/${ACTOR_NAME}.json`,
-  json({
-    subject: `acct:${ACTOR_NAME}@${HOSTNAME}`,
-    links: [
-      {
-        rel: "self",
-        type: "application/activity+json",
-        href: ACTOR_URL,
-      },
-    ],
-  }),
 ];
 
 const actor = async config => [
