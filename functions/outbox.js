@@ -1,15 +1,37 @@
 "use strict";
 
+const AWS = require("aws-sdk");
+const S3 = new AWS.S3({ apiVersion: "2006-03-01" });
+
 const config = require("../lib/config");
 const response = require("../lib/response");
 const html = require("../lib/html");
-const db = require("../lib/db");
+
+const MAX_ITEMS = 15;
 
 module.exports.get = async (event, context) => {
-  const { log, SITE_URL, OBJECTS_TABLE: TableName } = await config({
+  const { log, SITE_URL, STATIC_BUCKET: Bucket } = await config({
     event,
     context,
   });
+
+  // TODO: Better error handling for these S3 requests
+
+  const listResult = await S3.listObjects({
+    Bucket,
+    Prefix: `objects/Create/`,
+    MaxKeys: MAX_ITEMS,
+  }).promise();
+
+  const items = await Promise.all(
+    listResult.Contents.filter(filterJson).map(({ Key }) =>
+      S3.getObject({ Bucket, Key })
+        .promise()
+        .then(parseActivity)
+    )
+  );
+
+  const orderedItems = items.sort(cmpObjectsPublished);
 
   log.info("summary");
 
@@ -20,7 +42,18 @@ module.exports.get = async (event, context) => {
     data: {
       id: `${SITE_URL}/outbox`,
       type: "OrderedCollection",
-      orderedItems: await db.latestCreate({ TableName }),
+      orderedItems,
     },
   });
 };
+
+const filterJson = ({ Key }) => Key.endsWith(".json");
+
+const parseActivity = result => {
+  const data = JSON.parse(result.Body.toString("utf-8"));
+  delete data["@context"];
+  return data;
+};
+
+const cmpObjectsPublished = ({ published: ap }, { published: bp }) =>
+  bp.localeCompare(ap);

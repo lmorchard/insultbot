@@ -12,6 +12,7 @@ Object.assign(process.env, {
   QUEUE_NAME: "insultbot-dev-messages",
   OBJECTS_TABLE: "insultbot-dev-objects",
   FOLLOWERS_TABLE: "insultbot-dev-followers",
+  STATIC_BUCKET: "insultbot-dev-site",
 }, process.env);
 
 const { PORT = 4200 } = process.env;
@@ -21,9 +22,7 @@ function init() {
   const router = new Router();
 
   router
-    .get("/", lambdaFn("index", "get"))
     .get("/.well-known/webfinger", lambdaFn("webfinger", "get"))
-    .get("/actor", lambdaFn("actor", "get"))
     .post("/inbox", lambdaFn("inbox", "post"))
     .get("/outbox", lambdaFn("outbox", "get"));
 

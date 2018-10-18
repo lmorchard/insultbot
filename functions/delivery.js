@@ -2,7 +2,6 @@
 
 const { URL } = require("url");
 const fetch = require("node-fetch");
-const uuidv1 = require("uuid/v1");
 
 const AWS = require("aws-sdk");
 const documentClient = new AWS.DynamoDB.DocumentClient();
@@ -11,7 +10,7 @@ const S3 = new AWS.S3({ apiVersion: "2006-03-01" });
 const { signRequest } = require("../lib/httpSignatures");
 const { fetchJson } = require("../lib/request");
 const setupConfig = require("../lib/config");
-const { dateNow, withContext } = require("../lib/utils");
+const { dateNow, uid, withContext } = require("../lib/utils");
 const insults = require("../lib/insults");
 const db = require("../lib/db");
 const html = require("../lib/html");
@@ -128,15 +127,15 @@ async function handleFromInbox({ record, body, context, config }) {
 }
 
 async function createNote({ config, actor, actorDeref, content, inReplyTo }) {
-  const { log, ACTOR_URL, SITE_URL, STATIC_BUCKET: Bucket, OBJECTS_TABLE: TableName } = config;
+  const { log, ACTOR_URL, SITE_URL, STATIC_BUCKET: Bucket } = config;
   const { followers, url, preferredUsername } = actorDeref;
 
-  const objectUuid = uuidv1();
+  const objectUuid = uid();
+
   const object = {
     type: "Note",
-    uuid: objectUuid,
-    id: `${SITE_URL}/objects/${objectUuid}`,
-    url: `${SITE_URL}/objects/${objectUuid}.html`,
+    id: `${SITE_URL}/objects/Note/${objectUuid}.json`,
+    url: `${SITE_URL}/objects/Note/${objectUuid}.html`,
     published: dateNow(),
     attributedTo: ACTOR_URL,
     inReplyTo,
@@ -146,11 +145,9 @@ async function createNote({ config, actor, actorDeref, content, inReplyTo }) {
     content: `<p><span class="h-card"><a href="${url}" class="u-url mention">@<span>${preferredUsername}</span></a> </span>${content}</p>`,
   };
 
-  const activityUuid = `${objectUuid}-activity`;
   const activity = {
-    uuid: activityUuid,
-    id: `${SITE_URL}/objects/${activityUuid}`,
-    url: `${SITE_URL}/objects/${activityUuid}.html`,
+    id: `${SITE_URL}/objects/Create/${objectUuid}.json`,
+    url: `${SITE_URL}/objects/Create/${objectUuid}.html`,
     type: "Create",
     actor: ACTOR_URL,
     published: dateNow(),
@@ -164,38 +161,28 @@ async function createNote({ config, actor, actorDeref, content, inReplyTo }) {
   const putResult = Promise.all([
     S3.putObject({
       Bucket,
-      Key: `objects/${objectUuid}`,
+      Key: `objects/Note/${objectUuid}.json`,
       ContentType: "application/activity+json; charset=utf-8",
       Body: JSON.stringify(withContext(object), null, "  "),
     }).promise(),
     S3.putObject({
       Bucket,
-      Key: `objects/${objectUuid}.html`,
+      Key: `objects/Note/${objectUuid}.html`,
       ContentType: "text/html; charset=utf-8",
       Body: await html.object(object),
     }).promise(),
     S3.putObject({
       Bucket,
-      Key: `objects/${activityUuid}`,
+      Key: `objects/Create/${objectUuid}.json`,
       ContentType: "application/activity+json; charset=utf-8",
       Body: JSON.stringify(withContext(activity), null, "  "),
     }).promise(),
     S3.putObject({
       Bucket,
-      Key: `objects/${activityUuid}.html`,
+      Key: `objects/Create/${objectUuid}.html`,
       ContentType: "text/html; charset=utf-8",
       Body: await html.object(activity),
     }).promise(),
-    documentClient
-      .batchWrite({
-        RequestItems: {
-          [TableName]: [
-            { PutRequest: { Item: withContext(object) } },
-            { PutRequest: { Item: withContext(activity) } },
-          ],
-        },
-      })
-      .promise(),
   ]);
 
   log.debug("putCreateNoteActivity", { putResult });

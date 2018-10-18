@@ -10,7 +10,6 @@ custom:
   prefixAuto: ${self:service}-${self:custom.stage}
   prefix: ${env:PREFIX, self:custom.prefixAuto}
   resourceNames:
-    objects: ${self:custom.prefix}-objects
     followers: ${self:custom.prefix}-followers
     delivery: ${self:custom.prefix}-delivery
     sqs: ${self:custom.prefix}-messages
@@ -20,6 +19,7 @@ custom:
       'deploy:createDeploymentArtifacts': npm run build
   s3Sync:
     - bucketName: ${self:custom.resourceNames.staticBucket}
+      deleteRemoved: false
       localDir: build
       acl: public-read
       defaultContentType: text/html
@@ -39,7 +39,6 @@ provider:
     HOSTNAME: ${env:HOSTNAME, "insultron.lmorchard.com"}
     ACTOR_NAME: ${env:ACTOR_NAME, "Insultron2000"}
     QUEUE_NAME: ${self:custom.resourceNames.sqs}
-    OBJECTS_TABLE: ${self:custom.resourceNames.objects}
     FOLLOWERS_TABLE: ${self:custom.resourceNames.followers}
     STATIC_BUCKET: ${self:custom.resourceNames.staticBucket}
 
@@ -53,28 +52,11 @@ provider:
   - Effect: Allow
     Resource: arn:aws:sqs:*:*:${self:custom.resourceNames.sqs}
     Action:
-      - sqs:ChangeMessageVisibility
-      - sqs:ChangeMessageVisibilityBatch
-      - sqs:DeleteMessage
-      - sqs:DeleteMessageBatch
-      - sqs:GetQueueAttributes
-      - sqs:GetQueueUrl
-      - sqs:ReceiveMessage
-      - sqs:SendMessage
-      - sqs:SendMessageBatch
+      - sqs:*
   - Effect: Allow
     Action:
-      - dynamodb:GetItem
-      - dynamodb:PutItem
-      - dynamodb:DeleteItem
-      - dynamodb:UpdateItem
-      - dynamodb:BatchGetItem
-      - dynamodb:BatchWriteItem
-      - dynamodb:Query
-      - dynamodb:Scan
+      - dynamodb:*
     Resource:
-      - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.objects}
-      - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.objects}/index/*
       - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.followers}
       - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.followers}/index/*
 
@@ -111,36 +93,6 @@ resources:
               Resource:
                 Fn::Join: [ "", [ "arn:aws:s3:::", { "Ref": "StaticSite" }, "/*" ] ]
 
-    Objects:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:custom.resourceNames.objects}
-        AttributeDefinitions:
-          - AttributeName: uuid
-            AttributeType: S
-          - AttributeName: type
-            AttributeType: S
-          - AttributeName: published
-            AttributeType: S
-        KeySchema:
-          - AttributeName: uuid
-            KeyType: HASH
-        GlobalSecondaryIndexes:
-          - IndexName: byPublished
-            KeySchema:
-              - AttributeName: type
-                KeyType: HASH
-              - AttributeName: published
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
-            ProvisionedThroughput:
-              ReadCapacityUnits: 1
-              WriteCapacityUnits: 1
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
-
     Followers:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -156,23 +108,12 @@ resources:
           WriteCapacityUnits: 1
 
 functions:
-  index:
-    handler: functions/index.get
-    name: ${self:custom.prefix}-indexGet
-    events:
-      - http: GET /
 
   webfingerGet:
     handler: functions/webfinger.get
     name: ${self:custom.prefix}-webfingerGet
     events:
       - http: GET .well-known/webfinger
-
-  actorGet:
-    handler: functions/actor.get
-    name: ${self:custom.prefix}-actorGet
-    events:
-      - http: GET actor
 
   inboxPost:
     handler: functions/inbox.post

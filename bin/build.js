@@ -34,18 +34,18 @@ async function init() {
 const json = data => JSON.stringify(data, null, "  ");
 
 const hostmeta = async ({ SITE_URL }) => [
-  '.well-known/host-meta',
+  ".well-known/host-meta",
   `<?xml version="1.0" encoding="UTF-8"?>
     <XRD xmlns="http://docs.oasis-open.org/ns/xri/xrd-1.0">
       <Link
         rel="lrdd"
         type="application/xrd+xml"
-        template="${SITE_URL}/.well-known/webfinger/{uri}" />
-    </XRD>`.trim()
+        template="${SITE_URL}/.well-known/webfinger?resource={uri}" />
+    </XRD>`.trim(),
 ];
 
 const webfinger = async ({ ACTOR_NAME, HOSTNAME, ACTOR_URL }) => [
-  `.well-known/webfinger/acct%3A${ACTOR_NAME}%40${HOSTNAME}`,
+  `.well-known/webfinger/${ACTOR_NAME}.json`,
   json({
     subject: `acct:${ACTOR_NAME}@${HOSTNAME}`,
     links: [
@@ -55,17 +55,17 @@ const webfinger = async ({ ACTOR_NAME, HOSTNAME, ACTOR_URL }) => [
         href: ACTOR_URL,
       },
     ],
-  })
+  }),
 ];
 
 const actor = async config => [
-  'actor',
-  json(actorData(config))
+  "actor.json",
+  json(actorData(config)),
 ];
 
 const indexHTML = async config => [
   "index.html",
-  await html.actor(actorData(config))
+  await html.actor(actorData(config)),
 ];
 
 const actorData = ({
@@ -95,7 +95,7 @@ const actorData = ({
   icon: {
     type: "Image",
     mediaType: "image/png",
-    url: `${SITE_URL}/static/avatar.png`,
+    url: `${SITE_URL}/avatar.png`,
   },
   publicKey: {
     id: `${ACTOR_URL}#main-key`,
