@@ -18,24 +18,33 @@ const ID_PUBLIC = "https://www.w3.org/ns/activitystreams#Public";
 
 exports.handler = async (event, context) => {
   const config = await setupConfig({ event, context });
-  await insults.init();
-  await Promise.all(
-    event.Records.map(record => exports.deliver({ record, context, config }))
-  );
+  const { log } = config;
+  try {
+    await insults.init();
+    await Promise.all(
+      event.Records.map(record => exports.deliver({ record, context, config }))
+    );
+  } catch (error) {
+    log.error("deliveryHandlerFailure", { error });
+  }
 };
 
 exports.deliver = async ({ record, context, config }) => {
   const { log } = config;
-  const body = JSON.parse(record.body);
+  try {
+    const body = JSON.parse(record.body);
 
-  log.info("deliver", { record, body });
+    log.info("deliver", { record, body });
 
-  const commonParams = { record, body, context, config };
-  switch (body.task) {
-    case "deliverFromInbox":
-      return handleFromInbox(commonParams);
-    case "reindexSharedInboxes":
-      return handleReindexSharedInboxes(commonParams);
+    const commonParams = { record, body, context, config };
+    switch (body.task) {
+      case "deliverFromInbox":
+        return handleFromInbox(commonParams);
+      case "reindexSharedInboxes":
+        return handleReindexSharedInboxes(commonParams);
+    }
+  } catch (error) {
+    log.error("deliverFailure", { error });
   }
 
   return Promise.resolve();
@@ -69,20 +78,23 @@ async function handleFromInbox({ record, body, context, config }) {
       inReplyTo: object.url,
       content,
     });
-    await sendToRemoteInbox({ inbox: actorDeref.inbox, activity, config });
     try {
-      const sharedInboxesData = await S3.getObject({
+      await sendToRemoteInbox({ inbox: actorDeref.inbox, activity, config });
+    } catch (error) {
+      log.error("inboxDeliveryFailure", { error });
+    }
+    try {
+      const sharedInboxes = await S3.getObject({
         Bucket,
         Key: "sharedInboxes.json",
-      });
-      const sharedInboxes = JSON.parse(
-        sharedInboxesData.Body.toString("utf-8")
-      );
+      })
+        .promise()
+        .then(result => JSON.parse(result.Body.toString("utf-8")));
       for (let inbox of sharedInboxes) {
         await sendToRemoteInbox({ inbox, activity, config });
       }
-    } catch (e) {
-      log.error("sharedInboxDeliveryFailure", e);
+    } catch (error) {
+      log.error("sharedInboxDeliveryFailure", { error });
     }
   };
 
