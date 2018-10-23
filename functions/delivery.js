@@ -70,12 +70,19 @@ async function handleFromInbox({ record, body, context, config }) {
       content,
     });
     await sendToRemoteInbox({ inbox: actorDeref.inbox, activity, config });
-    const sharedInboxes = await S3.getObject({
-      Bucket,
-      Key: "sharedInboxes.json",
-    });
-    for (let inbox of sharedInboxes) {
-      await sendToRemoteInbox({ inbox, activity, config });
+    try {
+      const sharedInboxesData = await S3.getObject({
+        Bucket,
+        Key: "sharedInboxes.json",
+      });
+      const sharedInboxes = JSON.parse(
+        sharedInboxesData.Body.toString("utf-8")
+      );
+      for (let inbox of sharedInboxes) {
+        await sendToRemoteInbox({ inbox, activity, config });
+      }
+    } catch (e) {
+      log.error("sharedInboxDeliveryFailure", e);
     }
   };
 
