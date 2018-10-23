@@ -10,7 +10,6 @@ custom:
   prefixAuto: ${self:service}-${self:custom.stage}
   prefix: ${env:PREFIX, self:custom.prefixAuto}
   resourceNames:
-    followers: ${self:custom.prefix}-followers
     delivery: ${self:custom.prefix}-delivery
     sqs: ${self:custom.prefix}-messages
     staticBucket: ${self:custom.prefix}-site
@@ -39,7 +38,6 @@ provider:
     HOSTNAME: ${env:HOSTNAME, "insultron.lmorchard.com"}
     ACTOR_NAME: ${env:ACTOR_NAME, "Insultron2000"}
     QUEUE_NAME: ${self:custom.resourceNames.sqs}
-    FOLLOWERS_TABLE: ${self:custom.resourceNames.followers}
     STATIC_BUCKET: ${self:custom.resourceNames.staticBucket}
 
   iamRoleStatements:
@@ -53,12 +51,6 @@ provider:
     Resource: arn:aws:sqs:*:*:${self:custom.resourceNames.sqs}
     Action:
       - sqs:*
-  - Effect: Allow
-    Action:
-      - dynamodb:*
-    Resource:
-      - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.followers}
-      - arn:aws:dynamodb:*:*:table/${self:custom.resourceNames.followers}/index/*
 
 resources:
   Resources:
@@ -92,20 +84,6 @@ resources:
               - s3:GetObject
               Resource:
                 Fn::Join: [ "", [ "arn:aws:s3:::", { "Ref": "StaticSite" }, "/*" ] ]
-
-    Followers:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:custom.resourceNames.followers}
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
 
 functions:
 

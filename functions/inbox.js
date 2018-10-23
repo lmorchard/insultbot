@@ -49,7 +49,7 @@ module.exports.post = async (event, context) => {
     }
   }
 
-  const MessageBody = { source: "inbox", activity };
+  const MessageBody = { task: "deliverFromInbox", activity };
   log.debug("MessageBody", { MessageBody });
 
   const { QueueUrl } = await SQS.getQueueUrl({ QueueName }).promise();

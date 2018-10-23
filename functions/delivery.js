@@ -5,6 +5,7 @@ const fetch = require("node-fetch");
 
 const AWS = require("aws-sdk");
 const documentClient = new AWS.DynamoDB.DocumentClient();
+const SQS = new AWS.SQS({ apiVersion: "2012-11-05" });
 const S3 = new AWS.S3({ apiVersion: "2006-03-01" });
 
 const { signRequest } = require("../lib/httpSignatures");
@@ -12,7 +13,6 @@ const { fetchJson } = require("../lib/request");
 const setupConfig = require("../lib/config");
 const { dateNow, uid, withContext } = require("../lib/utils");
 const insults = require("../lib/insults");
-const db = require("../lib/db");
 const html = require("../lib/html");
 
 const ID_PUBLIC = "https://www.w3.org/ns/activitystreams#Public";
@@ -31,15 +31,19 @@ exports.deliver = async ({ record, context, config }) => {
 
   log.info("deliver", { record, body });
 
-  if (body.source === "inbox") {
-    return handleFromInbox({ record, body, context, config });
+  const commonParams = { record, body, context, config };
+  switch (body.task) {
+    case "deliverFromInbox":
+      return handleFromInbox(commonParams);
+    case "reindexSharedInboxes":
+      return handleReindexSharedInboxes(commonParams);
   }
 
   return Promise.resolve();
 };
 
 async function handleFromInbox({ record, body, context, config }) {
-  const { log, SITE_URL, FOLLOWERS_TABLE } = config;
+  const { log, SITE_URL, STATIC_BUCKET: Bucket } = config;
   const { activity = {} } = body;
   const { actor, object = {} } = activity;
 
@@ -67,8 +71,9 @@ async function handleFromInbox({ record, body, context, config }) {
       content,
     });
     await sendToRemoteInbox({ inbox: actorDeref.inbox, activity, config });
-    const sharedInboxes = await db.getSharedInboxes({
-      followersTableName: FOLLOWERS_TABLE,
+    const sharedInboxes = await S3.getObject({
+      Bucket,
+      Key: "sharedInboxes.json",
     });
     for (let inbox of sharedInboxes) {
       await sendToRemoteInbox({ inbox, activity, config });
@@ -88,9 +93,81 @@ async function handleFromInbox({ record, body, context, config }) {
   }
 
   if (activity.type == "Follow") {
-    log.info("follow", { actor, actorDeref });
+    return handleFollow({ config, send, actor, actorDeref });
+  }
 
-    const putResult = await documentClient
+  if (activity.type == "Undo" && object.type == "Follow") {
+    return handleUnfollow({
+      config,
+      send,
+      activity,
+      object,
+      actor,
+      actorDeref,
+    });
+  }
+
+  return Promise.resolve();
+}
+
+async function handleReindexSharedInboxes({ record, body, context, config }) {
+  const { log, STATIC_BUCKET: Bucket } = config;
+
+  // Get a list of followers - TODO: paginate if over 1000?
+  const listResult = await S3.listObjects({
+    Bucket,
+    Prefix: `followers/`,
+    MaxKeys: 1000,
+  }).promise();
+
+  // Fetch all the followers sequentially - TODO: do in batches?
+  const followers = await listResult.Contents.map(({ Key }) =>
+    S3.getObject({ Bucket, Key })
+      .promise()
+      .then(result => JSON.parse(result.Body.toString("utf-8")))
+  ).reduce(
+    (chain, current) =>
+      chain.then(results => current.then(result => [...results, result])),
+    Promise.resolve([])
+  );
+
+  // Extract all the unique shared inboxes from followers.
+  const sharedInboxes = Array.from(
+    new Set(followers.map(({ endpoints: { sharedInbox } }) => sharedInbox))
+  );
+
+  // Save the new list of shared inboxes
+  const putResult = await S3.putObject({
+    Bucket,
+    Key: "sharedInboxes.json",
+    ContentType: "application/json; charset=utf-8",
+    Body: JSON.stringify(sharedInboxes),
+  }).promise();
+
+  log.debug("sharedInboxesPutResult", { putResult });
+  log.info("reindexSharedInboxes", { count: sharedInboxes.length });
+}
+
+const actorToFollowId = actor => Buffer.from(actor, "utf8").toString("base64");
+
+// const followIdToActor = followId =>
+//   Buffer.from( followId, "base64").toString("utf8");
+
+async function handleFollow({ config, send, actor, actorDeref }) {
+  const { log, FOLLOWERS_TABLE, STATIC_BUCKET: Bucket } = config;
+
+  log.info("follow", { actor, actorDeref });
+
+  const followId = actorToFollowId(actor);
+
+  const putResult = await Promise.all([
+    S3.putObject({
+      Bucket,
+      Key: `followers/${followId}.json`,
+      ContentType: "application/activity+json; charset=utf-8",
+      Body: JSON.stringify(withContext(actorDeref), null, "  "),
+    }).promise(),
+    documentClient
       .put({
         TableName: FOLLOWERS_TABLE,
         Item: {
@@ -99,31 +176,53 @@ async function handleFromInbox({ record, body, context, config }) {
           datestamp: Date.now(),
         },
       })
-      .promise();
+      .promise(),
+  ]);
 
-    log.debug("followPut", { putResult });
+  log.debug("followPut", { putResult });
 
-    return send(`Thanks for the follow, ${await insults.generate()}`);
-  }
+  await enqueueReindexSharedInboxes({ config });
 
-  if (activity.type == "Undo" && object.type == "Follow") {
-    log.info("unfollow", { actor: activity.actor });
+  return send(`Thanks for the follow, ${await insults.generate()}`);
+}
 
-    const deleteResult = await documentClient
+async function handleUnfollow({ config, send, actor }) {
+  const { log, FOLLOWERS_TABLE, STATIC_BUCKET: Bucket } = config;
+
+  log.info("unfollow", { actor });
+
+  const followId = actorToFollowId(actor);
+
+  const deleteResult = await Promise.all([
+    S3.deleteObject({
+      Bucket,
+      Key: `followers/${followId}.json`,
+    }).promise(),
+    documentClient
       .delete({
         TableName: FOLLOWERS_TABLE,
         Key: {
           id: actor,
         },
       })
-      .promise();
+      .promise(),
+  ]);
 
-    log.debug("unfollowDelete", { deleteResult });
+  log.debug("unfollowDelete", { deleteResult });
 
-    return send(`I will miss you, ${await insults.generate()}`);
-  }
+  await enqueueReindexSharedInboxes({ config });
 
-  return Promise.resolve();
+  return send(`I will miss you, ${await insults.generate()}`);
+}
+
+async function enqueueReindexSharedInboxes({ config }) {
+  const { log, QUEUE_NAME: QueueName } = config;
+  const { QueueUrl } = await SQS.getQueueUrl({ QueueName }).promise();
+  const queueSendResult = await SQS.sendMessage({
+    QueueUrl,
+    MessageBody: JSON.stringify({ task: "reindexSharedInboxes" }),
+  }).promise();
+  log.info("enqueuedReindex", { queueSendResult });
 }
 
 async function createNote({ config, actor, actorDeref, content, inReplyTo }) {
@@ -158,7 +257,7 @@ async function createNote({ config, actor, actorDeref, content, inReplyTo }) {
 
   log.debug("createNoteActivity", { activity });
 
-  const putResult = Promise.all([
+  const putResult = await Promise.all([
     S3.putObject({
       Bucket,
       Key: `objects/Note/${objectUuid}.json`,
