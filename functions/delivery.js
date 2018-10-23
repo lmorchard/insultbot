@@ -4,7 +4,6 @@ const { URL } = require("url");
 const fetch = require("node-fetch");
 
 const AWS = require("aws-sdk");
-const documentClient = new AWS.DynamoDB.DocumentClient();
 const SQS = new AWS.SQS({ apiVersion: "2012-11-05" });
 const S3 = new AWS.S3({ apiVersion: "2006-03-01" });
 
@@ -154,30 +153,18 @@ const actorToFollowId = actor => Buffer.from(actor, "utf8").toString("base64");
 //   Buffer.from( followId, "base64").toString("utf8");
 
 async function handleFollow({ config, send, actor, actorDeref }) {
-  const { log, FOLLOWERS_TABLE, STATIC_BUCKET: Bucket } = config;
+  const { log, STATIC_BUCKET: Bucket } = config;
 
   log.info("follow", { actor, actorDeref });
 
   const followId = actorToFollowId(actor);
 
-  const putResult = await Promise.all([
-    S3.putObject({
-      Bucket,
-      Key: `followers/${followId}.json`,
-      ContentType: "application/activity+json; charset=utf-8",
-      Body: JSON.stringify(withContext(actorDeref), null, "  "),
-    }).promise(),
-    documentClient
-      .put({
-        TableName: FOLLOWERS_TABLE,
-        Item: {
-          id: actor,
-          actor: JSON.stringify(actorDeref),
-          datestamp: Date.now(),
-        },
-      })
-      .promise(),
-  ]);
+  const putResult = await S3.putObject({
+    Bucket,
+    Key: `followers/${followId}.json`,
+    ContentType: "application/activity+json; charset=utf-8",
+    Body: JSON.stringify(withContext(actorDeref), null, "  "),
+  }).promise();
 
   log.debug("followPut", { putResult });
 
@@ -187,26 +174,16 @@ async function handleFollow({ config, send, actor, actorDeref }) {
 }
 
 async function handleUnfollow({ config, send, actor }) {
-  const { log, FOLLOWERS_TABLE, STATIC_BUCKET: Bucket } = config;
+  const { log, STATIC_BUCKET: Bucket } = config;
 
   log.info("unfollow", { actor });
 
   const followId = actorToFollowId(actor);
 
-  const deleteResult = await Promise.all([
-    S3.deleteObject({
-      Bucket,
-      Key: `followers/${followId}.json`,
-    }).promise(),
-    documentClient
-      .delete({
-        TableName: FOLLOWERS_TABLE,
-        Key: {
-          id: actor,
-        },
-      })
-      .promise(),
-  ]);
+  const deleteResult = await S3.deleteObject({
+    Bucket,
+    Key: `followers/${followId}.json`,
+  }).promise();
 
   log.debug("unfollowDelete", { deleteResult });
 
