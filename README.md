@@ -7,13 +7,10 @@ This is a bot for insulting people automatically via ActivityPub.
 
 * Move outgoing delivery to separate queue tasks, reduce logging
 
+* Replace GET /outbox with S3 resource rather than function
+
 * Better HTML views of various things for better browser experience
 
-* Move read-only resources like webfinger, agent, and objects to static S3
-  website hosting bucket
-
-* Consider dropping DynamoDB for just S3?
-
-* Record followers, periodically insult them
+* Periodically insult followers
 
 * Accept commands from owner to remote-control the bot
