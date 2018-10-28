@@ -10,8 +10,8 @@ custom:
   prefixAuto: ${self:service}-${self:custom.stage}
   prefix: ${env:PREFIX, self:custom.prefixAuto}
   resourceNames:
-    delivery: ${self:custom.prefix}-delivery
-    sqs: ${self:custom.prefix}-messages
+    queue: ${self:custom.prefix}-queue
+    sqs: ${self:custom.prefix}-queue-messages
     staticBucket: ${self:custom.prefix}-site
   scripts:
     hooks:
@@ -55,7 +55,7 @@ provider:
 resources:
   Resources:
 
-    DeliveryMessages:
+    QueueMessages:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:custom.resourceNames.sqs}
@@ -112,15 +112,15 @@ functions:
   #  events:
   #    - schedule: rate(1 hour)
 
-  delivery:
+  queue:
     timeout: 60
-    handler: functions/delivery.handler
-    name: ${self:custom.resourceNames.delivery}
-    reservedConcurrency: 5
+    handler: functions/queue.handler
+    name: ${self:custom.resourceNames.queue}
+    reservedConcurrency: 3
     events:
       - sqs:
           batchSize: 5
           arn:
             Fn::GetAtt:
-              - DeliveryMessages
+              - QueueMessages
               - Arn

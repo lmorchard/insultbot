@@ -1,18 +1,14 @@
 "use strict";
 
-const AWS = require("aws-sdk");
-const SQS = new AWS.SQS({ apiVersion: "2012-11-05" });
-const fetch = require("node-fetch");
-
-const config = require("../lib/config");
+const setupConfig = require("../lib/config");
 const response = require("../lib/response");
 const { verifyRequest } = require("../lib/httpSignatures");
 
+const { enqueue } = require("./queue");
+
 module.exports.post = async (event, context) => {
-  const { log, HOSTNAME, QUEUE_NAME: QueueName } = await config({
-    event,
-    context,
-  });
+  const config = await setupConfig({ event, context });
+  const { log, HOSTNAME } = config;
 
   const { httpMethod: method, path, headers, body } = event;
 
@@ -28,7 +24,6 @@ module.exports.post = async (event, context) => {
   if (activity.type !== "Delete") {
     try {
       const signatureVerified = await verifyRequest({
-        fetch,
         method,
         path,
         headers: Object.assign({}, headers, { Host: HOSTNAME }),
@@ -49,15 +44,15 @@ module.exports.post = async (event, context) => {
     }
   }
 
-  const MessageBody = { task: "deliverFromInbox", activity };
-  log.debug("MessageBody", { MessageBody });
-
-  const { QueueUrl } = await SQS.getQueueUrl({ QueueName }).promise();
-  const queueSendResult = await SQS.sendMessage({
-    QueueUrl,
-    MessageBody: JSON.stringify(MessageBody),
-  }).promise();
-  log.info("enqueued", { queueSendResult });
+  try {
+    const result = await enqueue.receiveFromInbox({
+      config,
+      body: { activity },
+    });
+    log.info("inboxEnqueued", { result });
+  } catch (error) {
+    log.error("inboxEnqueueError", { error: error.toString() });
+  }
 
   return response.accepted({ event });
 };
